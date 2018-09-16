@@ -203,7 +203,7 @@ public class SelectBox<T> extends Widget implements Disableable {
 	}
 
 	@Override
-	public void draw (Batch batch, float a) {
+	public void draw (Batch batch, float parentAlpha) {
 		validate();
 
 		Drawable background;
@@ -224,7 +224,7 @@ public class SelectBox<T> extends Widget implements Disableable {
 		float x = getX(), y = getY();
 		float width = getWidth(), height = getHeight();
 
-		batch.setColor(color.r, color.g, color.b, color.a * a);
+		batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 		if (background != null) background.draw(batch, x, y, width, height);
 
 		T selected = selection.first();
@@ -237,7 +237,7 @@ public class SelectBox<T> extends Widget implements Disableable {
 			} else {
 				y += (int)(height / 2 + font.getData().capHeight / 2);
 			}
-			font.setColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a * a);
+			font.setColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a * parentAlpha);
 			drawItem(batch, font, selected, x, y, width);
 		}
 	}
@@ -377,7 +377,8 @@ public class SelectBox<T> extends Widget implements Disableable {
 				}
 
 				public boolean mouseMoved (InputEvent event, float x, float y) {
-					list.setSelectedIndex(Math.min(selectBox.items.size - 1, (int)((list.getHeight() - y) / list.getItemHeight())));
+					int index = list.getItemIndexAt(y);
+					if (index != -1) list.setSelectedIndex(index);
 					return true;
 				}
 			});

@@ -150,8 +150,8 @@ public class ObjectFloatMap<K> implements Iterable<ObjectFloatMap.Entry<K>> {
 		push(key, value, index1, key1, index2, key2, index3, key3);
 	}
 
-	public void putAll (ObjectFloatMap<K> map) {
-		for (Entry<K> entry : map.entries())
+	public void putAll (ObjectFloatMap<? extends K> map) {
+		for (Entry<? extends K> entry : map.entries())
 			put(entry.key, entry.value);
 	}
 
@@ -263,7 +263,7 @@ public class ObjectFloatMap<K> implements Iterable<ObjectFloatMap.Entry<K>> {
 		if (stashSize == stashCapacity) {
 			// Too many pushes occurred and the stash is full, increase the table size.
 			resize(capacity << 1);
-			put(key, value);
+			putResize(key, value);
 			return;
 		}
 		// Store key in the stash.

@@ -51,7 +51,7 @@ public class List<T> extends Widget implements Cullable {
 	private float prefWidth, prefHeight;
 	float itemHeight;
 	private int alignment = Align.left;
-	int touchDown;
+	int touchDown = -1, overIndex = -1;
 
 	public List (Skin skin) {
 		this(skin.get(ListStyle.class));
@@ -83,15 +83,8 @@ public class List<T> extends Widget implements Cullable {
 				if (selection.isDisabled()) return false;
 				getStage().setKeyboardFocus(List.this);
 				if (items.size == 0) return false;
-				float height = getHeight();
-				Drawable background = List.this.style.background;
-				if (background != null) {
-					height -= background.getTopHeight() + background.getBottomHeight();
-					y -= background.getBottomHeight();
-				}
-				int index = (int)((height - y) / itemHeight);
-				if (index > items.size - 1) return false;
-				index = Math.max(0, index);
+				int index = getItemIndexAt(y);
+				if (index == -1) return false;
 				selection.choose(items.get(index));
 				touchDown = index;
 				return true;
@@ -102,9 +95,14 @@ public class List<T> extends Widget implements Cullable {
 				touchDown = -1;
 			}
 
+			public boolean mouseMoved (InputEvent event, float x, float y) {
+				overIndex = getItemIndexAt(y);
+				return false;
+			}
+
 			public void exit (InputEvent event, float x, float y, int pointer, Actor toActor) {
-				if (pointer != 0) return;
-				touchDown = -1;
+				if (pointer == 0) touchDown = -1;
+				if (pointer == -1) overIndex = -1;
 			}
 		});
 	}
@@ -147,7 +145,7 @@ public class List<T> extends Widget implements Cullable {
 	}
 
 	@Override
-	public void draw (Batch batch, float a) {
+	public void draw (Batch batch, float parentAlpha) {
 		validate();
 
 		BitmapFont font = style.font;
@@ -156,7 +154,7 @@ public class List<T> extends Widget implements Cullable {
 		Color fontColorUnselected = style.fontColorUnselected;
 
 		Color color = getColor();
-		batch.setColor(color.r, color.g, color.b, color.a * a);
+		batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 
 		float x = getX(), y = getY(), width = getWidth(), height = getHeight();
 		float itemY = height;
@@ -173,7 +171,7 @@ public class List<T> extends Widget implements Cullable {
 		float textOffsetX = selectedDrawable.getLeftWidth(), textWidth = width - textOffsetX - selectedDrawable.getRightWidth();
 		float textOffsetY = selectedDrawable.getTopHeight() - font.getDescent();
 
-		font.setColor(fontColorUnselected.r, fontColorUnselected.g, fontColorUnselected.b, fontColorUnselected.a * a);
+		font.setColor(fontColorUnselected.r, fontColorUnselected.g, fontColorUnselected.b, fontColorUnselected.a * parentAlpha);
 		for (int i = 0; i < items.size; i++) {
 			if (cullingArea == null || (itemY - itemHeight <= cullingArea.y + cullingArea.height && itemY >= cullingArea.y)) {
 				T item = items.get(i);
@@ -182,12 +180,13 @@ public class List<T> extends Widget implements Cullable {
 					Drawable drawable = selectedDrawable;
 					if (touchDown == i && style.down != null) drawable = style.down;
 					drawable.draw(batch, x, y + itemY - itemHeight, width, itemHeight);
-					font.setColor(fontColorSelected.r, fontColorSelected.g, fontColorSelected.b, fontColorSelected.a * a);
-				}
+					font.setColor(fontColorSelected.r, fontColorSelected.g, fontColorSelected.b, fontColorSelected.a * parentAlpha);
+				} else if (overIndex == i && style.over != null) //
+					style.over.draw(batch, x, y + itemY - itemHeight, width, itemHeight);
 				drawItem(batch, font, i, item, x + textOffsetX, y + itemY - textOffsetY, textWidth);
 				if (selected) {
 					font.setColor(fontColorUnselected.r, fontColorUnselected.g, fontColorUnselected.b,
-						fontColorUnselected.a * a);
+						fontColorUnselected.a * parentAlpha);
 				}
 			} else if (itemY < cullingArea.y) {
 				break;
@@ -238,6 +237,26 @@ public class List<T> extends Widget implements Cullable {
 		}
 	}
 
+	/** @return null if not over an item. */
+	public T getItemAt (float y) {
+		int index = getItemIndexAt(y);
+		if (index == -1) return null;
+		return items.get(index);
+	}
+
+	/** @return -1 if not over an item. */
+	public int getItemIndexAt (float y) {
+		float height = getHeight();
+		Drawable background = List.this.style.background;
+		if (background != null) {
+			height -= background.getTopHeight() + background.getBottomHeight();
+			y -= background.getBottomHeight();
+		}
+		int index = (int)((height - y) / itemHeight);
+		if (index < 0 || index >= items.size) return -1;
+		return index;
+	}
+
 	public void setItems (T... newItems) {
 		if (newItems == null) throw new IllegalArgumentException("newItems cannot be null.");
 		float oldPrefWidth = getPrefWidth(), oldPrefHeight = getPrefHeight();
@@ -251,8 +270,8 @@ public class List<T> extends Widget implements Cullable {
 	}
 
 	/** Sets the items visible in the list, clearing the selection if it is no longer valid. If a selection is
-	 * {@link ArraySelection#getRequired()}, the first item is selected. This can safely be called with a
-	 * (modified) array returned from {@link #getItems()}. */
+	 * {@link ArraySelection#getRequired()}, the first item is selected. This can safely be called with a (modified) array returned
+	 * from {@link #getItems()}. */
 	public void setItems (Array newItems) {
 		if (newItems == null) throw new IllegalArgumentException("newItems cannot be null.");
 		float oldPrefWidth = getPrefWidth(), oldPrefHeight = getPrefHeight();
@@ -316,7 +335,7 @@ public class List<T> extends Widget implements Cullable {
 		public Color fontColorUnselected = new Color(1, 1, 1, 1);
 		public Drawable selection;
 		/** Optional. */
-		public Drawable down, background;
+		public Drawable down, over, background;
 
 		public ListStyle () {
 		}

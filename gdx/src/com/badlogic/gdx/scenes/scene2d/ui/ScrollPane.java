@@ -478,6 +478,7 @@ public class ScrollPane extends WidgetGroup {
 					hKnobBounds.width = Math.max(hScrollKnob.getMinWidth(), (int)(hScrollBounds.width * areaWidth / widgetWidth));
 				else
 					hKnobBounds.width = hScrollKnob.getMinWidth();
+				if (hKnobBounds.width > widgetWidth) hKnobBounds.width = 0;
 
 				hKnobBounds.height = hScrollKnob.getMinHeight();
 
@@ -510,6 +511,7 @@ public class ScrollPane extends WidgetGroup {
 					vKnobBounds.height = Math.max(vScrollKnob.getMinHeight(), (int)(vScrollBounds.height * areaHeight / widgetHeight));
 				else
 					vKnobBounds.height = vScrollKnob.getMinHeight();
+				if (vKnobBounds.height > widgetHeight) vKnobBounds.height = 0;
 
 				if (vScrollOnRight) {
 					vKnobBounds.x = width - bgRightWidth - vScrollKnob.getMinWidth();
@@ -566,7 +568,7 @@ public class ScrollPane extends WidgetGroup {
 	}
 
 	@Override
-	public void draw (Batch batch, float a) {
+	public void draw (Batch batch, float parentAlpha) {
 		if (widget == null) return;
 
 		validate();
@@ -582,7 +584,7 @@ public class ScrollPane extends WidgetGroup {
 
 		// Draw the background ninepatch.
 		Color color = getColor();
-		batch.setColor(color.r, color.g, color.b, color.a * a);
+		batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 		if (style.background != null) style.background.draw(batch, 0, 0, getWidth(), getHeight());
 
 		// Caculate the scissor bounds based on the batch transform, the available widget area and the camera transform. We need to
@@ -592,28 +594,30 @@ public class ScrollPane extends WidgetGroup {
 		// Enable scissors for widget area and draw the widget.
 		batch.flush();
 		if (ScissorStack.pushScissors(scissorBounds)) {
-			drawChildren(batch, a);
+			drawChildren(batch, parentAlpha);
 			batch.flush();
 			ScissorStack.popScissors();
 		}
 
 		// Render scrollbars and knobs on top if they will be visible
-		float alpha = color.a * a * Interpolation.fade.apply(fadeAlpha / fadeAlphaSeconds);
+		float alpha = color.a * parentAlpha * Interpolation.fade.apply(fadeAlpha / fadeAlphaSeconds);
 		if (alpha > 0f) {
 			batch.setColor(color.r, color.g, color.b, alpha);
-			if (scrollX && scrollY) {
+			boolean x = scrollX && hKnobBounds.width > 0;
+			boolean y = scrollY && vKnobBounds.height > 0;
+			if (x && y) {
 				if (style.corner != null) {
 					style.corner.draw(batch, hScrollBounds.x + hScrollBounds.width, hScrollBounds.y, vScrollBounds.width,
 						vScrollBounds.y);
 				}
 			}
-			if (scrollX) {
+			if (x) {
 				if (style.hScroll != null)
 					style.hScroll.draw(batch, hScrollBounds.x, hScrollBounds.y, hScrollBounds.width, hScrollBounds.height);
 				if (style.hScrollKnob != null)
 					style.hScrollKnob.draw(batch, hKnobBounds.x, hKnobBounds.y, hKnobBounds.width, hKnobBounds.height);
 			}
-			if (scrollY) {
+			if (y) {
 				if (style.vScroll != null)
 					style.vScroll.draw(batch, vScrollBounds.x, vScrollBounds.y, vScrollBounds.width, vScrollBounds.height);
 				if (style.vScrollKnob != null)
